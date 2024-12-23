@@ -5,6 +5,7 @@ require("dotenv").config();
 
 const USER_JWT_SECRET = process.env.USER_JWT_SECRET;
 
+
 exports.register = async (req, res) => {
   const {
     fullname,

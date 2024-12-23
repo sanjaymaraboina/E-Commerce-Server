@@ -20,7 +20,7 @@ const paymentOrderSchema = new mongoose.Schema({
     },
     orderId: {
         type: String, 
-        required: true,
+        default: null,
     }
 }, {
     timestamp: true

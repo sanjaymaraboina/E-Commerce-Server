@@ -12,18 +12,18 @@ const razorpay = new Razorpay({
 exports.createPaymentOrder = async (req, res) => {
   try {
     const { checkoutId, amount } = req.body;
-    const orderDetails = Checkout.findById(checkoutId);
+    const orderDetails = await Checkout.findById(checkoutId);
+    console.log(orderDetails)
     if (!orderDetails) {
       return res.status(404).send({ message: "checkout id not found" });
     }
-    const orderInfo = new PaymentOrder({
+    const paymentOrder = new PaymentOrder({
       userId: orderDetails.userId,
       checkoutId: checkoutId,
       paidAmount: orderDetails.totalAmount,
       status: "INITIATED"
     });
-    const paymentOrderDetails = await orderInfo.save();
-
+ const paymentOrderDetails = await paymentOrder.save();
     const finalAmount = (amount * 100).toFixed(2);
     const options = {
       amount: parseFloat(finalAmount),
@@ -31,6 +31,7 @@ exports.createPaymentOrder = async (req, res) => {
       receipt: `receipt_${Date.now()}`,
     }
     response = await razorpay.orders.create(options);
+    console.log(response);
 
     const updateData = {
       orderId: response?.id,
@@ -38,7 +39,7 @@ exports.createPaymentOrder = async (req, res) => {
 
     if (response.id) {
       updateData['status'] = 'CREATED';
-      await PaymentOrder.findByIdAndUPdate(paymentOrderDetails._id, updateDate, {
+      await PaymentOrder.findByIdAndUpdate(paymentOrderDetails._id,{status:  updateData.status}, {
         new: true,
         runValidators: true,
       })
@@ -48,8 +49,9 @@ exports.createPaymentOrder = async (req, res) => {
         new: true, runValidators: true
       });
     }
-    res.status(200).json({...orderInfo,response});
+    res.status(200).json(response);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Failed to create payment order" });
   }
 }
@@ -118,40 +120,4 @@ exports.capture = async (req, res) => {
     }
   }
 
-exports.createOrder = async (req, res) => {
-    try {
-      const { amount } = req.body;
 
-      const options = {
-        amount: amount * 100,
-        currency: "INR",
-        receipt: `receipt_${Date.now()}`,
-      };
-
-      const order = await razorpay.orders.create(options);
-      res.status(200).json(order);
-    } catch (error) {
-      console.error("Error creating Razorpay order:", error);
-      res.status(500).json({ error: "Failed to create order" });
-    }
-  };
-
-  exports.verifyPayment = (req, res) => {
-    try {
-      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-
-      const generatedSignature = crypto
-        .createHmac("sha256", "hgcHMAtNzixBnpcVLhghBREM")
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest("hex");
-
-      if (generatedSignature === razorpay_signature) {
-        res.status(200).json({ success: true, message: "Payment verified successfully" });
-      } else {
-        res.status(400).json({ success: false, error: "Invalid signature" });
-      }
-    } catch (error) {
-      console.error("Payment verification error:", error);
-      res.status(500).json({ error: "Payment verification failed" });
-    }
-  };
