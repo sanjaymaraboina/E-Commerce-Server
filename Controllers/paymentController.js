@@ -13,7 +13,6 @@ exports.createPaymentOrder = async (req, res) => {
   try {
     const { checkoutId, amount } = req.body;
     const orderDetails = await Checkout.findById(checkoutId);
-    console.log(orderDetails)
     if (!orderDetails) {
       return res.status(404).send({ message: "checkout id not found" });
     }
@@ -31,7 +30,6 @@ exports.createPaymentOrder = async (req, res) => {
       receipt: `receipt_${Date.now()}`,
     }
     response = await razorpay.orders.create(options);
-    console.log(response);
 
     const updateData = {
       orderId: response?.id,
@@ -39,7 +37,7 @@ exports.createPaymentOrder = async (req, res) => {
 
     if (response.id) {
       updateData['status'] = 'CREATED';
-      await PaymentOrder.findByIdAndUpdate(paymentOrderDetails._id,{status:  updateData.status}, {
+      await PaymentOrder.findByIdAndUpdate(paymentOrderDetails._id,{status:  updateData.status, orderId: updateData.orderId}, {
         new: true,
         runValidators: true,
       })
