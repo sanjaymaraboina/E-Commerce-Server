@@ -2,10 +2,11 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const Checkout = require("../models/checkout");
 const PaymentOrder = require('../models/payment_orders');
+const { razorpayKeyId, razorpaySecret } = require("../constants/constants");
 
 const razorpay = new Razorpay({
-  key_id: "rzp_test_9sbpWDETdi1Exn",
-  key_secret: "hgcHMAtNzixBnpcVLhghBREM",
+  key_id: razorpayKeyId,
+  key_secret: razorpaySecret,
 });
 
 
@@ -56,9 +57,13 @@ exports.createPaymentOrder = async (req, res) => {
 
 exports.capture = async (req, res) => {
   try {
-    const paymentOrders = await PaymentOrder.find({ orderId: req.body.payload.entity.order_id });
-    if (paymentOrders._id) {
-      const secret = key_secret;
+    const order = 'order_PaxeYqgkRLA9U8';
+    // const paymentOrders = await PaymentOrder.find({ orderId: req.body.payload.entity.order_id });
+    const paymentOrders = await PaymentOrder.findOne({orderId: order});
+    if(!paymentOrders){
+      res.status(400).json({error: "order id is not exist"});
+    }
+      const secret = razorpaySecret;
       const shasum = crypto.createHmac('sha256', secret);
       shasum.update(JSON.stringify(req.body));
       const digest = shasum.digest('hex');
@@ -72,7 +77,7 @@ exports.capture = async (req, res) => {
         paymentOrderId: orderDetails._id
       }
       if (digest === req.headers['x-razorpay-signature']) {
-        const transactionDetails = await PaymentTransaction.find({ paymentOrderId: req.body.payload.payment.entity.order_id });
+        const transactionDetails = await PaymentTransaction.findOne({ paymentOrderId: req.body.payload.payment.entity.order_id });
         if (transactionDetails) {
           if (req.body.event === "payment.captured") {
             await PaymentTransaction.update({
@@ -111,7 +116,6 @@ exports.capture = async (req, res) => {
             await transaction.save();
           }
         }
-      }
     }catch(error){
       console.error("Error capturing order ", error);
       res.status(500).json({error: "Failed to capture payment"});

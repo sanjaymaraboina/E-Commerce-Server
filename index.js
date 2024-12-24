@@ -1,9 +1,6 @@
 const express = require('express')
 const app = express();
 const cors = require('cors');
-require("dotenv").config();
-const port = process.env.PORT 
-
 
 require('./db/connection')
 
@@ -17,6 +14,7 @@ const productRoutes = require('./Routes/productRoutes')
 const cartRoutes =require('./Routes/cartRoutes')
 const wishRoutes =require('./Routes/wishRoutes')
 const checkoutRoutes = require('./Routes/checkoutRoutes');
+const { port } = require('./constants/constants');
 
 
 
