@@ -2,7 +2,7 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const Checkout = require("../models/checkout");
 const PaymentOrder = require('../models/payment_orders');
-const { razorpayKeyId, razorpaySecret } = require("../constants/constants");
+const { razorpayKeyId, razorpaySecret, razorpayWebhookSecret } = require("../constants/constants");
 
 const razorpay = new Razorpay({
   key_id: razorpayKeyId,
@@ -58,12 +58,12 @@ exports.createPaymentOrder = async (req, res) => {
 exports.capture = async (req, res) => {
   try {
     const order = 'order_PaxeYqgkRLA9U8';
-    // const paymentOrders = await PaymentOrder.find({ orderId: req.body.payload.entity.order_id });
-    const paymentOrders = await PaymentOrder.findOne({orderId: order});
+    const paymentOrders = await PaymentOrder.find({ orderId: req.body.payload.entity.order_id });
+    // const paymentOrders = await PaymentOrder.findOne({orderId: order});
     if(!paymentOrders){
       res.status(400).json({error: "order id is not exist"});
     }
-      const secret = razorpaySecret;
+      const secret = razorpayWebhookSecret;
       const shasum = crypto.createHmac('sha256', secret);
       shasum.update(JSON.stringify(req.body));
       const digest = shasum.digest('hex');
