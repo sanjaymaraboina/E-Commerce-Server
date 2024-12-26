@@ -2,6 +2,7 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const Checkout = require("../models/checkout");
 const PaymentOrder = require('../models/payment_orders');
+const PaymentTransaction = require('../models/payment_transactions');
 const { razorpayKeyId, razorpaySecret, razorpayWebhookSecret } = require("../constants/constants");
 
 const razorpay = new Razorpay({
@@ -57,9 +58,8 @@ exports.createPaymentOrder = async (req, res) => {
 
 exports.capture = async (req, res) => {
   try {
-    const order = 'order_PaxeYqgkRLA9U8';
-    const paymentOrders = await PaymentOrder.find({ orderId: req.body.payload.entity.order_id });
-    // const paymentOrders = await PaymentOrder.findOne({orderId: order});
+    const paymentOrders = await PaymentOrder.findOne({ orderId: req.body.payload.payment.entity.order_id });
+
     if(!paymentOrders){
       res.status(400).json({error: "order id is not exist"});
     }
@@ -68,16 +68,17 @@ exports.capture = async (req, res) => {
       shasum.update(JSON.stringify(req.body));
       const digest = shasum.digest('hex');
       var transactionData = {
-        orderId: req.body.payload.entity.order_id,
+        orderId: req.body.payload.payment.entity.order_id,
         paymentId: req.body.payload.payment.entity.id,
         paymentType: 'RAZORPAY',
         amount: (req.body.payload.payment.entity.amount) / 100,
-        transactionType: req.body.payload.entity.method,
+        transactionType: req.body.payload.payment.entity.method,
         status: "PROCESSING",
-        paymentOrderId: orderDetails._id
+        paymentOrderId: paymentOrders._id
       }
       if (digest === req.headers['x-razorpay-signature']) {
         const transactionDetails = await PaymentTransaction.findOne({ paymentOrderId: req.body.payload.payment.entity.order_id });
+        console.log(transactionDetails);
         if (transactionDetails) {
           if (req.body.event === "payment.captured") {
             await PaymentTransaction.update({
@@ -87,6 +88,7 @@ exports.capture = async (req, res) => {
               description: "Payment Success"
             });
             const data = await Checkout.findById(paymentOrders.checkoutId);
+            console.log(data);
             if (!data) {
               const status = 'SUCCESS';
               await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: status });
@@ -98,6 +100,7 @@ exports.capture = async (req, res) => {
             if(req.body.event === 'order.paid'){
               transactionData.status = 'SUCCESS';
               const data = await Checkout.findById(paymentOrders.checkoutId);
+              console.log(data);
               if (!data) {
                  transactionData.status = 'SUCCESS';
                 await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: transactionData.status });
@@ -116,6 +119,7 @@ exports.capture = async (req, res) => {
             await transaction.save();
           }
         }
+        res.status(200).json({message: "payment success"});
     }catch(error){
       console.error("Error capturing order ", error);
       res.status(500).json({error: "Failed to capture payment"});
