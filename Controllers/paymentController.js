@@ -94,7 +94,6 @@ exports.capture = async (req, res) => {
             }
           } else if (req.body.event === "payment.failed") {
             await PaymentTransaction.update({ orderId: req.body.payload.payment.entity.order_id, paymentId: req.body.payload.payment.entity.id }, { status: "FAILED", description: req.body.payload.entity.error_description });
-            await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: 'FAILED' });
             res.status(400).json({message: "payment Failed"});
           }
          } else {
@@ -111,7 +110,7 @@ exports.capture = async (req, res) => {
               const data = await Checkout.findById(paymentOrders.checkoutId);
               if (!data) {
                  transactionData.status = 'SUCCESS';
-                await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: transactionData.status });
+                await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: 'SUCCESS' });
               }
               res.status(200).json({message: "payment success"});
             }else if (req.body.event === 'order.failed') {
@@ -124,7 +123,6 @@ exports.capture = async (req, res) => {
                 status: 'FAILED'
               });
               await transaction.save();
-              await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: 'FAILED' });
               res.status(400).json({message: "payment failed"});
             }
           
