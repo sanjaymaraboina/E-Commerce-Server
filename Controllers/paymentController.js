@@ -77,8 +77,7 @@ exports.capture = async (req, res) => {
         paymentOrderId: paymentOrders._id
       }
       if (digest === req.headers['x-razorpay-signature']) {
-        const transactionDetails = await PaymentTransaction.findOne({ paymentOrderId: req.body.payload.payment.entity.order_id });
-        console.log(transactionDetails);
+        const transactionDetails = await PaymentTransaction.findOne({ orderId: req.body.payload.payment.entity.order_id });
         if (transactionDetails) {
           if (req.body.event === "payment.captured") {
             await PaymentTransaction.update({
@@ -88,38 +87,49 @@ exports.capture = async (req, res) => {
               description: "Payment Success"
             });
             const data = await Checkout.findById(paymentOrders.checkoutId);
-            console.log(data);
             if (!data) {
               const status = 'SUCCESS';
               await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: status });
+              res.status(200).json({message: "payment success"});
             }
           } else if (req.body.event === "payment.failed") {
             await PaymentTransaction.update({ orderId: req.body.payload.payment.entity.order_id, paymentId: req.body.payload.payment.entity.id }, { status: "FAILED", description: req.body.payload.entity.error_description });
+            await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: 'FAILED' });
+            res.status(400).json({message: "payment Failed"});
           }
          } else {
             if(req.body.event === 'order.paid'){
-              transactionData.status = 'SUCCESS';
+              const transaction = new PaymentTransaction({
+                userId: paymentOrders.userId,
+                orderId: transactionData.orderId,
+                paymentId:transactionData.paymentId,
+                checkoutId: paymentOrders.checkoutId,
+                paidAmount: transactionData.amount,
+                status: 'SUCCESS'
+              });
+              await transaction.save();
               const data = await Checkout.findById(paymentOrders.checkoutId);
-              console.log(data);
               if (!data) {
                  transactionData.status = 'SUCCESS';
                 await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: transactionData.status });
               }
+              res.status(200).json({message: "payment success"});
             }else if (req.body.event === 'order.failed') {
-              transactionData.status = 'SUCCESS';
+              const transaction = new PaymentTransaction({
+                userId: paymentOrders.userId,
+                orderId: transactionData.orderId,
+                paymentId:transactionData.paymentId,
+                checkoutId: paymentOrders.checkoutId,
+                paidAmount: transactionData.amount,
+                status: 'FAILED'
+              });
+              await transaction.save();
+              await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: 'FAILED' });
+              res.status(400).json({message: "payment failed"});
             }
-            const transaction = new PaymentTransaction({
-              userId: paymentOrders.userId,
-              orderId: transactionData.orderId,
-              paymentId:transactionData.paymentId,
-              checkoutId: paymentOrders.checkoutId,
-              paidAmount: transactionData.amount,
-              status: transactionData.status
-            });
-            await transaction.save();
+          
           }
         }
-        res.status(200).json({message: "payment success"});
     }catch(error){
       console.error("Error capturing order ", error);
       res.status(500).json({error: "Failed to capture payment"});
