@@ -89,7 +89,7 @@ exports.capture = async (req, res) => {
             const data = await Checkout.findById(paymentOrders.checkoutId);
             if (!data) {
               const status = 'SUCCESS';
-              await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: status });
+              await Checkout.findByIdAndUpdate( paymentOrders.checkoutId, { paymentStatus: status });
               res.status(200).json({message: "payment success"});
             }
           } else if (req.body.event === "payment.failed") {
@@ -110,7 +110,7 @@ exports.capture = async (req, res) => {
               const data = await Checkout.findById(paymentOrders.checkoutId);
               if (!data) {
                  transactionData.status = 'SUCCESS';
-                await Checkout.findOneAndUpdate(paymentOrders.checkoutId, { paymentStatus: 'SUCCESS' });
+                await Checkout.findByIdAndUpdate( paymentOrders.checkoutId, { paymentStatus: 'SUCCESS' });
               }
               res.status(200).json({message: "payment success"});
             }else if (req.body.event === 'order.failed') {
